@@ -6,70 +6,27 @@ import { useEffect, useState } from "react";
 import { darkTheme, lightTheme } from "../components/theme";
 import { ThemeModeButton } from "../components/toggle";
 import '../styles/App.css';
-import axios from "axios";
-import Loading from "./loading";
+import PokemonData from "../pokemonData";
+import { useLocation } from "react-router-dom";
+import Splash from "./loading";
 
 function HomePage() {
   //Data fetch
-    const [loading, setLoading] = useState(true);
-    const [pokemonData, setPokemonData] = useState([]);
+
     const [filteredData, setFilteredData] = useState([]);
     const [displayedData, setData] = useState([]);
+    const allPokemonData = PokemonData;
 
-    const fetchPokemon = async () => {
-      const baseURL = "https://pokeapi.co/api/v2";
-
-      const allPokemonData = [];
-      try {
-        const res = await axios.get(`${baseURL}/pokemon?offset=0&limit=100`);
-        const pokemonList = res.data.results; 
-
-        for (const pokemon of pokemonList) {
-          const speciesRes = await axios.get(pokemon.url);
-          const speciesData = await axios.get(speciesRes.data.species.url);
-          const koreanName = speciesData.data.names.find(name => name.language.name === 'ko');
-          const typeList = speciesRes.data.types;
-          const statList = speciesRes.data.stats;
-
-  
-          const pokemonType = [];
-          for(const Type of typeList) {
-              const typeRes = await axios.get(Type.type.url);
-              const typeName = typeRes.data.names.find(name => name.language.name === 'ko');
-              pokemonType.push(typeName.name);
-          }
-
-          const pokemonStat =[];
-          for(const Stat of statList) {
-            const statRes = await axios.get(Stat.stat.url);
-            const statName = statRes.data.names.find(name => name.language.name === 'ko');
-            const statData = {'stat': statName.name, 'statFigure': Stat.base_stat}
-            pokemonStat.push(statData);
-
-          }
-        
-          allPokemonData.push({
-              title: koreanName.name,
-              sprite: speciesRes.data.sprites.front_default,
-              type: pokemonType,
-              stats: pokemonStat,
-        });
-      }
-
-      setPokemonData(allPokemonData);
-      setLoading(false);
-
-      } catch (err) {
-        console.log(err);
-      }
-    };
-
+    const [splash, setSplash] = useState(true);
     useEffect(() => {
-      fetchPokemon();
-      console.log("fetch 완료")
-    },[]);
+      let splashed = sessionStorage.getItem("splashed");
+      if(splashed ==="true")
+        setSplash(false);
+    }, [])
 
-
+    const handleSplash = () => {
+      setSplash(false);
+    }
     //serarch 기능
     const [search, setSearch] = useState("");
     const onChange = (e) => {
@@ -77,7 +34,7 @@ function HomePage() {
     }
 
     useEffect(()=>{
-      const filterType = pokemonData.filter(p => {
+      const filterType = allPokemonData.filter(p => {
         for(const type of p["type"])
         {
           if(type.includes(search))
@@ -87,18 +44,26 @@ function HomePage() {
       })
 
       setFilteredData(filterType);
-    }, [search, pokemonData])
+    }, [search, allPokemonData])
  
 
-      //pagination
-      const [page, setPage] = useState(1);
-      const changePageHandler = (page) => {
-        setPage(page);
-      }
+    //pagination
+    const [page, setPage] = useState(1);
     
-      useEffect(() => {
-        setData(filteredData.slice((page-1)*20, page * 20));
-      }, [page, filteredData])
+    const location = useLocation();
+    useEffect(() => {
+      if (location.state?.page != null) {
+        setPage(location.state.page);
+      }
+    }, [location.state]);
+
+    const changePageHandler = (page) => {
+      setPage(page);
+    }
+    
+    useEffect(() => {
+      setData(filteredData.slice((page-1)*20, page * 20));
+    }, [page, filteredData])
     
 
     //다크모드 구현 + localStorage 이용해 새로고침 후에도 상태 유지
@@ -126,8 +91,8 @@ function HomePage() {
     }, [])
 
     //UI
-    if(loading === true)
-      return (<Loading/>);
+    if(splash === true)
+      return (<Splash finishSplash={handleSplash}/>);
     else{
       return (
         <ThemeProvider theme={theme}>
@@ -142,14 +107,14 @@ function HomePage() {
 
             <div className="Content">
               {displayedData.map((data, index) => (
-                <DataComponent key={index} data={data}/>
+                <DataComponent key={index} data={data} page={page}/>
               ))}
             </div>
 
             <Pagination
               activePage={page}
               itemsCountPerPage={20}
-              totalItemsCount={pokemonData.length}
+              totalItemsCount={allPokemonData.length}
               pageRangeDisplayed={5}
               prevPageText={"<"}
               nextPageText={">"}

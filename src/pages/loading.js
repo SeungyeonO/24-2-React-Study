@@ -1,11 +1,23 @@
+import { useEffect } from "react";
 import { LoadingPage } from "../components/component";
+import splashImg from "../assets/splashImg.png";
 
-function Loading() {
+function Splash({finishSplash}) {
+
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            sessionStorage.setItem('splashed', "true");
+            finishSplash();
+        }, 2000);
+  
+        return () => clearTimeout(timer);
+        }, [finishSplash]);
     return (
         <LoadingPage>
-            <p className="loadingMessage">loading...</p>
+            <img src={splashImg}  alt="splashImg" width='300px' />
         </LoadingPage>
     );
 }
 
-export default Loading;
+export default Splash;
